@@ -10,6 +10,10 @@ from handlers.ping import ping_router
 from handlers.start import start_router
 
 
+async def on_startup(_dispatcher: Dispatcher):
+    pass
+
+
 async def main() -> None:
     dispatcher = Dispatcher()
     dispatcher.include_routers(ping_router, start_router)
@@ -19,7 +23,7 @@ async def main() -> None:
         default=DefaultBotProperties(parse_mode=ParseMode.HTML),
     )
 
-    await dispatcher.start_polling(bot)
+    await dispatcher.start_polling(bot, on_startup=on_startup)
 
 
 if __name__ == "__main__":
