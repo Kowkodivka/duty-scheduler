@@ -140,9 +140,9 @@ async def start(message: Message, bot: AsyncTeleBot):
 
     duties_schedule, formatted_schedule = create_monthly_schedule(usernames, holidays)
 
-    save_schedule(duties_schedule)
-    save_usernames(usernames)
-    save_holidays(holidays)
+    await save_schedule(duties_schedule)
+    await save_usernames(usernames)
+    await save_holidays(holidays)
 
     await bot.reply_to(
         message, "```\n" + formatted_schedule + "\n```", parse_mode="Markdown"

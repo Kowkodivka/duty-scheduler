@@ -15,3 +15,6 @@ wheels/
 # Cache
 .mypy_cache
 .ruff_cache
+
+# Project
+info.json
