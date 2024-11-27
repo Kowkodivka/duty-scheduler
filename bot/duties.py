@@ -5,31 +5,36 @@ from prettytable import PrettyTable
 
 
 def generate_duties(
-    usernames: list[str], month: int, year: int, holidays: list[int] = None
+    usernames: list[str], month: int, year: int, holidays: list[str] = None
 ) -> dict:
     holidays = holidays or []
 
-    first_day = datetime(year, month, 1)
+    holiday_dates = {
+        datetime.strptime(holiday, "%Y-%m-%d").date() for holiday in holidays
+    }
+
+    first_day = datetime(year, month, 1).date()
 
     next_month = (
-        first_day.replace(month=month % 12 + 1, day=1)
+        (first_day.replace(month=month % 12 + 1, day=1))
         if month < 12
-        else first_day.replace(year=year + 1, month=1, day=1)
+        else (first_day.replace(year=year + 1, month=1, day=1))
     )
-
     days_in_month = (next_month - first_day).days
 
     for day in range(1, days_in_month + 1):
         current_date = first_day + timedelta(days=day - 1)
         if current_date.weekday() in (5, 6):
-            holidays.append(day)
+            holiday_dates.add(current_date)
 
     schedule = {}
     n_participants = len(usernames)
     main_idx, reserve_idx = 0, 1
 
     for day in range(1, days_in_month + 1):
-        if day in holidays:
+        current_date = first_day + timedelta(days=day - 1)
+
+        if current_date in holiday_dates:
             schedule[day] = {"main": None, "reserve": None}
         else:
             main_id = usernames[main_idx]
