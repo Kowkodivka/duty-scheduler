@@ -3,11 +3,12 @@ name = "duty-scheduler"
 version = "0.1.0"
 description = ""
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "aiohttp>=3.11.7",
     "aiosqlite>=0.20.0",
     "coloredlogs>=15.0.1",
+    "prettytable>=3.12.0",
     "pytelegrambotapi>=4.24.0",
     "python-dotenv>=1.0.1",
 ]
