@@ -8,5 +8,8 @@ class Settings(BaseSettings):
 
     BOT_TOKEN: str
 
+    TIME_ZONE: str = "Asia/Novokuznetsk"
+    DATABASE_PATH: str = "duties.db"
+
 
 settings = Settings()
