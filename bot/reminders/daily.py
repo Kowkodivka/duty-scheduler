@@ -1,22 +1,20 @@
 from datetime import datetime
 
 
-async def send_daily_reminder(bot, chat_id, duties_schedule, participants):
-    today = datetime.now().day
+async def send_daily_reminder(bot, chat_id, schedule):
+    current_day = datetime.now().day
 
-    if today in duties_schedule:
-        id_to_name = {
-            participant["id"]: participant["name"] for participant in participants
-        }
+    if current_day in schedule:
+        main = schedule[current_day].get("main")
+        reserve = schedule[current_day].get("reserve", "Нет")
 
-        duty = duties_schedule[today]
+        if main:
+            reminder_message = (
+                f"📢 *Напоминание о дежурстве на сегодня!*\n\n"
+                f"📅 Сегодня *{datetime.now().strftime('%d.%m.%Y')}*\n\n"
+                f"👤 *Дежурный*: {main}\n"
+                f"🔄 *Резерв*: {reserve}\n\n"
+                f"Пожалуйста, не забудьте о своих обязанностях. Спасибо! 😊"
+            )
 
-        main = id_to_name.get(duty["main"], "Нет")
-        reserve = id_to_name.get(duty["reserve"], "Нет")
-
-        mentions = " ".join(f"@{name}" for name in [main, reserve] if name != "Нет")
-
-        await bot.send_message(
-            chat_id,
-            f"🔔 Напоминание: Сегодня дежурят:\n⭐ Основной: {main}\n🛠️ Резервный: {reserve}\n{mentions}",
-        )
+            await bot.send_message(chat_id, reminder_message, parse_mode="Markdown")

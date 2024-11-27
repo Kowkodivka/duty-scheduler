@@ -1,9 +1,12 @@
 import asyncio
+import os
 from asyncio import Event
+from datetime import datetime, timedelta
 
 from duties import create_monthly_schedule
 from telebot.async_telebot import AsyncTeleBot
 from telebot.types import Message
+from utils import save_holidays, save_schedule, save_usernames
 
 
 async def get_usernames(message: Message, bot: AsyncTeleBot) -> list[str]:
@@ -11,6 +14,7 @@ async def get_usernames(message: Message, bot: AsyncTeleBot) -> list[str]:
         "📝 Telegram не позволяет получить список участников группы автоматически. "
         "Пожалуйста, введите людей через пробел или упоминания (@username), которые будут дежурить:"
     )
+
     await bot.reply_to(message, info_message)
 
     usernames = []
@@ -57,15 +61,16 @@ async def get_usernames(message: Message, bot: AsyncTeleBot) -> list[str]:
     return usernames
 
 
-async def get_holidays(message: Message, bot: AsyncTeleBot) -> list[int]:
+async def get_holiday_dates(message: Message, bot: AsyncTeleBot) -> list[str]:
     info_message = (
-        "📅 Укажите праздничные дни в формате: `1, 4, 5, 9-12` или откажитесь, написав `нет`.\n"
-        "Дни можно перечислять через запятую или диапазоны через дефис."
+        "📅 Укажите праздничные даты в формате: `2023-11-28, 2023-12-01` или диапазоны: `2023-12-01 - 2023-12-03`.\n"
+        "Если праздничных дней нет, напишите `нет`.\n"
+        "Даты указывайте в формате `YYYY-MM-DD`, разделяя запятыми или используя диапазоны через дефис."
     )
 
     await bot.reply_to(message, info_message, parse_mode="Markdown")
 
-    holidays = []
+    holiday_dates = []
     response_event = Event()
 
     def is_author_message(target: Message):
@@ -74,27 +79,40 @@ async def get_holidays(message: Message, bot: AsyncTeleBot) -> list[int]:
         )
 
     @bot.message_handler(func=is_author_message)
-    async def process_holidays(target: Message):
-        nonlocal holidays
+    async def process_holiday_dates(target: Message):
+        nonlocal holiday_dates
 
         if "нет" in target.text.lower():
-            await bot.reply_to(target, "✅ Праздничных дней нет.")
+            await bot.reply_to(target, "✅ Праздничных дат нет.")
         else:
             input_text = target.text.replace(" ", "").strip(",")
-            holidays = []
+            holiday_dates = []
 
-            for part in input_text.split(","):
-                if "-" in part:
-                    start, end = map(int, part.split("-"))
-                    holidays.extend(range(start, end + 1))
-                else:
-                    holidays.append(int(part))
+            try:
+                for part in input_text.split(","):
+                    if "-" in part:
+                        start_str, end_str = map(str.strip, part.split("-"))
+                        start_date = datetime.strptime(start_str, "%Y-%m-%d")
+                        end_date = datetime.strptime(end_str, "%Y-%m-%d")
+                        current_date = start_date
+                        while current_date <= end_date:
+                            holiday_dates.append(current_date.strftime("%Y-%m-%d"))
+                            current_date += timedelta(days=1)
+                    else:
+                        single_date = datetime.strptime(part.strip(), "%Y-%m-%d")
+                        holiday_dates.append(single_date.strftime("%Y-%m-%d"))
 
-            holidays = sorted(set(holidays))
+                holiday_dates = sorted(set(holiday_dates))
 
-            await bot.reply_to(
-                target, f"✅ Праздничные дни: {', '.join(map(str, holidays))}"
-            )
+                await bot.reply_to(
+                    target, f"✅ Праздничные даты: {', '.join(holiday_dates)}"
+                )
+            except ValueError:
+                await bot.reply_to(
+                    target,
+                    "❌ Ошибка: Проверьте формат ввода. Даты должны быть в формате `YYYY-MM-DD`.",
+                )
+                return
 
         response_event.set()
 
@@ -106,15 +124,26 @@ async def get_holidays(message: Message, bot: AsyncTeleBot) -> list[int]:
         )
         return []
 
-    return holidays
+    return holiday_dates
 
 
 async def start(message: Message, bot: AsyncTeleBot):
+    if int(os.getenv("CHAT_ID")) != message.chat.id:
+        return
+
     usernames = await get_usernames(message, bot)
+
     if not usernames:
         return
 
-    holidays = await get_holidays(message, bot)
-    duties_schedule, formatted_schedule = create_monthly_schedule(usernames, holidays=holidays)
+    holidays = await get_holiday_dates(message, bot)
 
-    await bot.reply_to(message, "```\n" + formatted_schedule + "\n```", parse_mode="Markdown")
+    duties_schedule, formatted_schedule = create_monthly_schedule(usernames, holidays)
+
+    save_schedule(duties_schedule)
+    save_usernames(usernames)
+    save_holidays(holidays)
+
+    await bot.reply_to(
+        message, "```\n" + formatted_schedule + "\n```", parse_mode="Markdown"
+    )
